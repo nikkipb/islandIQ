@@ -206,9 +206,7 @@ function reveal(i: number) {
       <div class="tile ans flip" style="--i:1"><span class="k">Answer</span><span class="v">${exact(q, r.answer.a)}</span></div>
       <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">${r.guess >= r.answer.a ? "Too high" : "Too low"}</span><span class="v" id="pts" style="${fit(f, [34, 26, 20, 15])}">${fx(f)}</span></div>
     </div>
-    <div class="rise" style="--i:6">${revealRuler(r.answer.a, r.guess)}</div>
-    <p class="story rise" style="--i:7">${esc(r.answer.reveal)}</p>
-    ${r.answer.why ? `<p class="why rise" style="--i:8">${esc(r.answer.why)}</p>` : ""}`;
+    <div class="rise" style="--i:6">${revealRuler(r.answer.a, r.guess)}</div>`;
   $("dock").innerHTML = `<button class="go" id="next"><span>${last ? "See your score" : "Next question"}</span><span class="arr">→</span></button>`;
   $("next").onclick = () => go(play.results.length >= 3 ? "sum" : "q");
   $<HTMLButtonElement>("next").focus({ preventScroll: true });

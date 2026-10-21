@@ -5,6 +5,7 @@ Build data/schedule.json from the question bank spreadsheet.
 
 - Reads the "Question Bank" sheet (columns as in the co-founders' workbook).
 - Skips rows whose Editorial status starts with "Rejected" or whose ID is in SKIP.
+- Units are metric only; tonnes are converted to kg. A non-metric unit stops the build.
 - Issues that have already gone out (up to today's issue, Malta time) are FROZEN:
   they are copied from the existing schedule.json unchanged, so editing the bank
   never alters a past puzzle. Only future issues are re-planned.
@@ -13,10 +14,11 @@ Build data/schedule.json from the question bank spreadsheet.
 
 Needs: pip install openpyxl
 """
-import json, random, sys, datetime, zoneinfo, os
+import json, random, sys, datetime, zoneinfo, os, re
 
 EPOCH = datetime.date(2026, 10, 21)          # keep in sync with shared/time.ts
-SKIP = {"IQ035", "IQ028"}                    # index level not guessable; duplicate of IQ027
+SKIP = {"IQ035", "IQ028"}
+IMPERIAL = re.compile(r"\b(miles?|feet|foot|inch(es)?|pounds?|lbs?|ounces?|oz|gallons?|acres?|yards?|mph|fahrenheit|°F|stone|tons?)\b", re.I)                    # index level not guessable; duplicate of IQ027
 
 def load_bank(path):
     import openpyxl
@@ -39,6 +41,12 @@ def load_bank(path):
             pre, a, unit = "€", a * 1e6, "euros"
         if unit == "percent":
             suf = "%"
+        # Metric only, and weights always in kilograms (how Malta talks about weight).
+        if str(unit).startswith("tonnes"):
+            a, unit = a * 1000, "kg"
+            q["Question"] = re.sub(r"\btonnes\b", "kilograms", q["Question"])
+        if IMPERIAL.search(f"{q['Question']} {unit}"):
+            sys.exit(f"{q['ID']}: uses a non-metric unit; convert it to metric (weights in kg).")
         for col in ("Question", "Reveal", "Source", "Source URL"):
             if not q.get(col):
                 sys.exit(f"{q['ID']}: missing {col}")
@@ -73,12 +81,12 @@ def plan(pool, seed_start=0):
             return days, left
     sys.exit("Could not build a schedule; the bank needs more category variety.")
 
-def main(src, dst):
+def main(src, dst, replan=False):
     bank = load_bank(src)
     today = datetime.datetime.now(zoneinfo.ZoneInfo("Europe/Malta")).date()
     live = max(0, (today - EPOCH).days + 1)
     old = json.load(open(dst)) if os.path.exists(dst) else []
-    frozen = old[:live]
+    frozen = [] if replan else old[:live]
     used = {q["id"] for d in frozen for q in d}
     days, spare = plan([q for q in bank if q["id"] not in used])
     sched = frozen + days
@@ -89,4 +97,5 @@ def main(src, dst):
     print(f"Content runs out after issue {len(sched)} ({last}). Add questions before then.")
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    # --replan ignores the freeze (only safe before launch, or to fix a mistake).
+    main(sys.argv[1], sys.argv[2], replan="--replan" in sys.argv)
