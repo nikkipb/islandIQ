@@ -207,3 +207,11 @@ dialog.sheet::backdrop{background:transparent}
 .entry .unit-tag{display:flex;align-items:center;padding:0 12px 0 4px;font-family:var(--f-text);font-size:14px;font-weight:500;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%;pointer-events:none}
 .entry .unit-tag:empty{display:none}
 .entry:focus-within{box-shadow:0 0 0 3px var(--plate)}
+
+/* ---------- desktop ad rails (see src/ads.ts) ---------- */
+.rail{position:fixed;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:0}
+.rail-left{right:calc(50% + 260px + 48px)}
+.rail-right{left:calc(50% + 260px + 48px)}
+.rail-label{font-family:var(--f-num);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.rail-dummy{display:grid;place-items:center;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-2);font-family:var(--f-num);font-size:12px;background:var(--rule-2)}
+@media (max-width:999px){.rail{display:none}}

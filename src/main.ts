@@ -7,6 +7,7 @@ import { revealRuler } from "./ruler";
 import { esc, exact, short, words } from "./format";
 import { fetchIssue, submitGuess } from "./api";
 import { load, save, type Play } from "./store";
+import { mountAds } from "./ads";
 
 const CAT: Record<string, string> = {
   "Heritage & History": "heritage", "Sport & Football": "sport", "Geography & Environment": "geo",
@@ -285,3 +286,4 @@ function countUp(el: HTMLElement, to: number, delay: number, after: () => void) 
 const fromHash = () => { const n = Number(location.hash.slice(1)); return Number.isInteger(n) && n > 0 ? n : "today" as const; };
 window.addEventListener("hashchange", () => open(fromHash()));
 open(fromHash());
+mountAds();
