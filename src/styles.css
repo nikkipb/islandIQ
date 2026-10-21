@@ -208,10 +208,18 @@ dialog.sheet::backdrop{background:transparent}
 .entry .unit-tag:empty{display:none}
 .entry:focus-within{box-shadow:0 0 0 3px var(--plate)}
 
-/* ---------- desktop ad rails (see src/ads.ts) ---------- */
+/* ---------- ads (see src/ads.ts) ---------- */
 .rail{position:fixed;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:0}
 .rail-left{right:calc(50% + 260px + 48px)}
 .rail-right{left:calc(50% + 260px + 48px)}
-.rail-label{font-family:var(--f-num);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
-.rail-dummy{display:grid;place-items:center;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-2);font-family:var(--f-num);font-size:12px;background:var(--rule-2)}
+.ad{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ad-label{font-family:var(--f-num);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.ad-dummy{display:grid;place-items:center;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-2);font-family:var(--f-num);font-size:12px;background:var(--rule-2);max-width:100%}
 @media (max-width:999px){.rail{display:none}}
+@media (max-height:700px){.ad-summary .ad-label{display:none}}
+
+.legal{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
+.legal a,.legal .link{color:var(--ink-2);text-underline-offset:3px;font-size:13px;padding:0}
+.mydata{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;font-size:13px;color:var(--ink-2);border-top:1px solid var(--rule);padding-top:12px}
+.mydata code{font-family:var(--f-num);color:var(--ink);margin-left:4px}
+.mydata .link{font-size:13px;padding:0}

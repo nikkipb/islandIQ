@@ -1,3 +1,4 @@
+import "./fonts";
 import "./styles.css";
 import { parseGuess, ParseError } from "../shared/parse";
 import { secondsToNextIssue } from "../shared/time";
@@ -5,9 +6,9 @@ import { issueScore, roundFactor } from "../shared/scoring";
 import type { IssuePayload } from "../shared/types";
 import { revealRuler } from "./ruler";
 import { esc, exact, short, words } from "./format";
-import { fetchIssue, submitGuess } from "./api";
-import { load, save, type Play } from "./store";
-import { mountAds } from "./ads";
+import { fetchIssue, forgetMe, submitGuess } from "./api";
+import { load, playerId, save, type Play } from "./store";
+import { activateAds, archiveAd, mountRails, openConsent, summaryAd } from "./ads";
 
 const CAT: Record<string, string> = {
   "Heritage & History": "heritage", "Sport & Football": "sport", "Geography & Environment": "geo",
@@ -69,7 +70,33 @@ paintThemeButton();
 
 /* ---------------- archive sheet ---------------- */
 const sheet = $<HTMLDialogElement>("archive");
-$("open-archive").onclick = () => { renderArchive(); sheet.showModal(); };
+$("open-archive").onclick = () => {
+  renderArchive();
+  $("archive-ad").innerHTML = archiveAd();
+  sheet.showModal();
+  activateAds($("archive-ad"));
+};
+$("pid").textContent = playerId().slice(0, 8);
+let armed = false;
+$("forget").onclick = async () => {
+  const b = $<HTMLButtonElement>("forget");
+  // Two taps, both inline: the first arms the button, the second deletes.
+  if (!armed) { armed = true; b.textContent = "Tap again to delete all your guesses"; kick(b, "shake"); return; }
+  b.textContent = "Deleting…";
+  try {
+    await forgetMe();
+    try { ["islandiq-v2", "islandiq-player"].forEach((k) => localStorage.removeItem(k)); } catch { /* fine */ }
+    b.textContent = "Deleted. Starting fresh…";
+    setTimeout(() => location.replace("/"), 900);
+  } catch (e) {
+    armed = false;
+    b.textContent = "Couldn't delete. Try again";
+    kick(b, "shake");
+  }
+};
+$("consent").onclick = () => {
+  if (!openConsent()) $("consent").textContent = "Privacy settings (available once ads are on)";
+};
 $("close-archive").onclick = () => sheet.close();
 
 function renderArchive() {
@@ -123,7 +150,8 @@ function intro() {
       <div class="chip fill ${cat(q.cat)} flip ${i < n ? "done" : ""}" style="--i:${i + 1}" title="${esc(q.cat)}" aria-label="${esc(q.cat)}${i < n ? ", answered" : ""}">
         <span class="e" aria-hidden="true">${emoji(q.cat)}</span>
       </div>`).join("")}</div>
-    <p class="how rise" style="--i:5">Three numbers. One guess each. Your score is how many times off you are, so lower wins.</p>`;
+    <p class="how rise" style="--i:5">Three numbers. One guess each. Your score is how many times off you are, so lower wins.</p>
+    <nav class="legal rise" style="--i:6"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>`;
   $("dock").innerHTML = `<button class="go" id="start"><span>${n ? "Carry on" : "Play"}</span><span class="arr">→</span></button>`;
   $("start").onclick = () => go(play.results.length >= 3 ? "sum" : "q");
 }
@@ -232,9 +260,11 @@ function summary() {
       <div class="line ${cat(q.cat)} flip" style="--i:${i + 1}"><span class="sw"></span>
         <div class="q"><span>${emoji(q.cat)} ${esc(q.cat)}</span><div class="meter"><i style="--w:${closeness(sc[i])}%;--i:${i + 1}"></i></div></div>
         <span class="s" style="color:${tone(sc[i])};${fit(sc[i], [28, 24, 18, 14])}">${fx(sc[i])}</span></div>`).join("")}</div>
+    ${summaryAd()}
     ${latest ? `<div class="next rise" style="--i:7"><span>Next issue in</span><b id="cd">--:--:--</b></div>` : `<div class="next"><span>Issue ${issue!.issue} of ${issue!.latest}</span><a class="link" href="#">Today's issue</a></div>`}`;
   $("dock").innerHTML = `<button class="go" id="share"><span>Share result</span><span class="arr">↗</span></button>`;
   countUp($("total"), avg, calm() ? 0 : 450, () => kick($("total"), "pop"));
+  activateAds($("board"));
 
   const btn = $<HTMLButtonElement>("share");
   btn.onclick = async () => {
@@ -286,4 +316,4 @@ function countUp(el: HTMLElement, to: number, delay: number, after: () => void) 
 const fromHash = () => { const n = Number(location.hash.slice(1)); return Number.isInteger(n) && n > 0 ? n : "today" as const; };
 window.addEventListener("hashchange", () => open(fromHash()));
 open(fromHash());
-mountAds();
+mountRails();

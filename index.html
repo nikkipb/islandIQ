@@ -13,9 +13,6 @@
     // Apply the saved theme before first paint so night players never get a white flash.
     try { var t = localStorage.getItem("islandiq-theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Schibsted+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
 </head>
 <body>
   <div class="app">
@@ -44,7 +41,12 @@
       <div class="sheet-body">
         <p id="archive-note"></p>
         <div class="days" id="days"></div>
-        <p>Every answer links to its official source and reference period. No accounts: your scores stay on this device.</p>
+        <div class="mydata">
+          <span>Your player ID <code id="pid"></code></span>
+          <button class="link" id="forget">Delete my data</button>
+        </div>
+        <div id="archive-ad"></div>
+        <nav class="legal"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/cookies">Cookies</a><a href="/terms">Terms</a><button class="link" id="consent">Privacy settings</button></nav>
       </div>
     </div>
   </dialog>

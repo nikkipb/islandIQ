@@ -55,3 +55,17 @@ Schema changes: add a new file in `migrations/`, then `npm run db:migrate:remote
 - Domain: islandiq.mt or islandiq.gg
 - Launch date (`EPOCH` in `shared/time.ts` and `scripts/build_schedule.py`)
 - Crowd stats: data is already being stored; show them once there are enough real players
+
+## Ads and privacy
+
+- Ad slots live in `src/ads.ts`: desktop side rails, a 320×100 banner on the phone summary
+  screen, and a 300×250 in the past-issues sheet. Nothing shows mid-question.
+  Add `?adpreview` to any URL to see the layout with grey boxes.
+- To go live: paste the AdSense publisher id and 4 ad-unit ids into `src/ads.ts`, fill in
+  `public/ads.txt`, and turn on AdSense → Privacy & messaging → European regulations message
+  (Google's certified consent banner; no code needed).
+- Legal pages: `privacy.html`, `cookies.html`, `terms.html`, `about.html`.
+  **Before launch:** put the founders' legal names (or company) and a Maltese postal address in
+  the "Who is responsible" section of `privacy.html` (marked TODO), and make hello@islandiq.gg work.
+- `POST /api/forget` deletes a player's guesses (GDPR erasure); exposed as "Delete my data".
+- Fonts are self-hosted (`@fontsource`), so no visitor data goes to Google Fonts.

@@ -13,6 +13,7 @@ export default {
       try { return await postGuess(request, env); }
       catch (e) { console.error(e); return json({ error: "Couldn't save your guess. Try again in a moment." }, 500); }
     }
+    if (url.pathname === "/api/forget" && request.method === "POST") return forget(request, env);
     if (url.pathname.startsWith("/api/")) return json({ error: "Not found." }, 404);
     return env.ASSETS.fetch(request);
   },
@@ -61,4 +62,13 @@ async function postGuess(request: Request, env: Env) {
     answer: { a: q.a, reveal: q.reveal, why: q.why, period: q.period, src: q.src, url: q.url },
   };
   return json(res);
+}
+
+// POST /api/forget { player } — GDPR erasure: delete every guess linked to this player id.
+async function forget(request: Request, env: Env) {
+  let b: { player?: unknown };
+  try { b = await request.json(); } catch { return json({ error: "Bad request." }, 400); }
+  if (typeof b.player !== "string" || !/^[a-z0-9-]{8,64}$/i.test(b.player)) return json({ error: "Bad player id." }, 400);
+  const r = await env.DB.prepare("DELETE FROM guesses WHERE player = ?1").bind(b.player).run();
+  return json({ deleted: r.meta.changes ?? 0 });
 }

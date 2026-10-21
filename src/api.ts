@@ -17,3 +17,10 @@ export const submitGuess = (issue: number, index: number, guess: number) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ issue, index, guess, player: playerId() }),
   });
+
+export const forgetMe = () =>
+  call<{ deleted: number }>("/api/forget", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ player: playerId() }),
+  });
