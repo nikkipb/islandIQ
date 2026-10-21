@@ -1,26 +1,27 @@
 import type { Kind } from "./types";
 
 /**
- * Scoring: 0–100 per question, 300 per issue.
- *  ratio  – large totals. Linear in log-distance; 10× off (either way) scores 0.
- *  count  – small counts. Same shape, but 3× off scores 0.
- *  pp     – percentages. Linear in percentage points; 25pp off scores 0.
- * Tune these in one place; the client draws its ruler from the same numbers.
+ * Scoring, fermi.gg-style: the multiplier is how many times off you were.
+ *   exact = 1.0×, half or double = 2.0×, ten times off = 10×. Lower is better.
+ * The same rule applies to every question (totals, counts and percentages).
+ * An issue's score is the average multiplier across its three questions.
+ * Each question is capped at CAP so one wild miss can't swamp the average.
  */
-export const ZERO_AT = { ratio: 10, count: 3, pp: 25 } as const;
+export const CAP = 100;
 
-export function score(kind: Kind, answer: number, guess: number): number {
-  if (!Number.isFinite(guess) || guess < 0) return 0;
-  if (kind === "pp") {
-    return Math.round(100 * Math.max(0, 1 - Math.abs(guess - answer) / ZERO_AT.pp));
-  }
-  if (guess === 0) return 0;
-  const off = Math.abs(Math.log(guess / answer)) / Math.log(ZERO_AT[kind]);
-  return Math.round(100 * Math.max(0, 1 - off));
+export function factor(answer: number, guess: number): number {
+  if (!(guess > 0) || !(answer > 0)) return CAP;
+  return Math.min(CAP, Math.max(guess / answer, answer / guess));
 }
 
+/** Average multiplier for an issue (arithmetic mean, as fermi.gg does). */
+export const issueScore = (factors: number[]) => factors.reduce((a, b) => a + b, 0) / factors.length;
+
+/** Rounded for storage and display: 1 decimal under 10×, whole numbers above. */
+export const roundFactor = (f: number) => (f < 10 ? Math.round(f * 10) / 10 : Math.round(f));
+
 export function validGuess(kind: Kind, g: unknown): g is number {
-  if (typeof g !== "number" || !Number.isFinite(g)) return false;
-  if (kind === "pp") return g >= 0 && g <= 100;
-  return g > 0 && g < 1e15;
+  if (typeof g !== "number" || !Number.isFinite(g) || g <= 0) return false;
+  if (kind === "pp") return g <= 100;
+  return g < 1e15;
 }

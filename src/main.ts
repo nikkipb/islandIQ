@@ -1,6 +1,7 @@
 import "./styles.css";
 import { parseGuess, ParseError } from "../shared/parse";
 import { secondsToNextIssue } from "../shared/time";
+import { CAP, issueScore, roundFactor } from "../shared/scoring";
 import type { IssuePayload } from "../shared/types";
 import { liveRuler, liveX, revealRuler } from "./ruler";
 import { esc, exact, short, words } from "./format";
@@ -13,8 +14,16 @@ const CAT: Record<string, string> = {
   "Property & Cost of Living": "property", "Business & Economy": "economy", Tourism: "tourism",
 };
 const cat = (c: string) => "c-" + (CAT[c] ?? "geo");
-const word = (s: number) => s >= 95 ? "Bang on" : s >= 80 ? "Very close" : s >= 60 ? "Close" : s >= 35 ? "In the area" : s > 0 ? "Way off" : "Not even close";
-const tone = (s: number) => s >= 80 ? "var(--good)" : s >= 40 ? "var(--mid)" : "var(--bad)";
+const EMOJI: Record<string, string> = {
+  heritage: "🏛️", sport: "⚽", geo: "🌊", people: "👥", transport: "🚌",
+  food: "🥖", property: "🏠", economy: "📈", tourism: "✈️",
+};
+const emoji = (c: string) => EMOJI[CAT[c] ?? "geo"];
+const word = (f: number) => f <= 1.1 ? "Bang on" : f <= 1.5 ? "Very close" : f <= 2 ? "Close" : f <= 5 ? "In the area" : f <= 20 ? "Way off" : "Not even close";
+const tone = (f: number) => f <= 1.5 ? "var(--good)" : f <= 3 ? "var(--mid)" : "var(--bad)";
+const fx = (f: number) => { if (f >= CAP) return CAP + "×+"; const r = roundFactor(f); return (r < 10 ? r.toFixed(1) : String(r)) + "×"; };
+/** Bar length for a multiplier: full at 1×, empty at 10× and beyond (log scale). */
+const closeness = (f: number) => Math.max(0, 1 - Math.log10(f)) * 100;
 const fmtDate = (ymd: string) => new Date(ymd + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -63,7 +72,7 @@ function renderArchive() {
   const n = issue.latest;
   $("archive-note").textContent = n >= issue.total ? `${n} issues` : `${n} issues out so far`;
   $("days").innerHTML = Array.from({ length: n }, (_, k) => n - k).map((i) => {
-    const p = load(i), done = p.view === "sum", t = done ? p.results.reduce((a, r) => a + r.score, 0) : null;
+    const p = load(i), done = p.view === "sum", t = done ? fx(issueScore(p.results.map((r) => r.factor))) : null;
     return `<button class="day" data-i="${i}" aria-current="${i === issue!.issue}" aria-label="Issue ${i}${done ? ", scored " + t : ""}"><span class="dn">${i}</span><span class="ds">${done ? t : "–"}</span></button>`;
   }).join("");
   document.querySelectorAll<HTMLButtonElement>(".day").forEach((b) => (b.onclick = () => { sheet.close(); location.hash = b.dataset.i!; }));
@@ -86,7 +95,8 @@ async function open(n: number | "today") {
 function render() {
   if (!issue) return;
   clearInterval(cdTimer);
-  $("issue").innerHTML = `<b>No. ${issue.issue}</b><br>${fmtDate(issue.date)}`;
+  // The landing page shows issue + date itself, so the header stays clean there.
+  $("issue").innerHTML = play.view === "intro" ? "" : `<b>No. ${issue.issue}</b><br>${fmtDate(issue.date)}`;
   const v = play.view;
   if (v === "intro") intro();
   else if (v === "q") question(play.results.length);
@@ -101,15 +111,15 @@ function intro() {
   const n = play.results.length, Q = issue!.questions;
   $("board").innerHTML = `
     <section class="hero rise">
-      <h1 class="no"><small>No.</small>${issue!.issue}</h1>
-      <p>Three Maltese numbers. One guess each. Up to 100 points a question.</p>
+      <h1 class="tagline">How well do you really know Malta?</h1>
+      <p class="dateline"><b>No. ${issue!.issue}</b><span>${fmtDate(issue!.date)}</span></p>
     </section>
-    <div class="tickets">${Q.map((q, i) => `
-      <div class="ticket fill ${cat(q.cat)} flip ${i < n ? "done" : ""}" style="--i:${i + 1}">
-        <span class="n">${i + 1}</span><span class="t">${esc(q.cat)}</span><span class="d">${esc(q.diff)}</span>
+    <div class="peek" aria-label="Today's topics">${Q.map((q, i) => `
+      <div class="chip fill ${cat(q.cat)} flip ${i < n ? "done" : ""}" style="--i:${i + 1}" title="${esc(q.cat)}" aria-label="${esc(q.cat)}${i < n ? ", answered" : ""}">
+        <span class="e" aria-hidden="true">${emoji(q.cat)}</span>
       </div>`).join("")}</div>
-    <p class="how rise" style="--i:5">Shorthand works: <code>4.2m</code> <code>250k</code> <code>18%</code>. Every answer comes with its source.</p>`;
-  $("dock").innerHTML = `<button class="go" id="start"><span>${n ? "Carry on" : "Play today's three"}</span><span class="arr">→</span></button>`;
+    <p class="how rise" style="--i:5">Three numbers. One guess each. Your score is how many times off you are, so lower wins.</p>`;
+  $("dock").innerHTML = `<button class="go" id="start"><span>${n ? "Carry on" : "Play"}</span><span class="arr">→</span></button>`;
   $("start").onclick = () => go(play.results.length >= 3 ? "sum" : "q");
 }
 
@@ -118,7 +128,7 @@ function question(i: number) {
   const q = issue!.questions[i];
   $("board").innerHTML = `
     <section class="field fill ${cat(q.cat)} flip">
-      <div class="top"><span>${esc(q.cat)}</span><span class="of">${i + 1} of 3 · ${esc(q.diff)}</span></div>
+      <div class="top"><span>${emoji(q.cat)} ${esc(q.cat)}</span><span class="of">${i + 1} of 3</span></div>
       <div class="steps" aria-hidden="true">${[0, 1, 2].map((k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
       <h2>${esc(q.q)}</h2>
       <span class="unit">Answer in ${esc(q.unit)}</span>
@@ -182,53 +192,52 @@ function question(i: number) {
   };
 }
 
-/* ---------------- reveal: tiles flip in sequence, then the score pops ---------------- */
+/* ---------------- reveal: tiles flip in sequence, then the multiplier pops ---------------- */
 function reveal(i: number) {
-  const q = issue!.questions[i], r = play.results[i], s = r.score, last = i === 2;
+  const q = issue!.questions[i], r = play.results[i], f = r.factor, last = i === 2;
   $("board").innerHTML = `
     <section class="field fill compact ${cat(q.cat)}">
-      <div class="top"><span>${esc(q.cat)}</span><span class="of">${i + 1} of 3</span></div>
+      <div class="top"><span>${emoji(q.cat)} ${esc(q.cat)}</span><span class="of">${i + 1} of 3</span></div>
       <h2>${esc(q.q)}</h2>
     </section>
-    <div class="tiles" style="--tone:${tone(s)}">
+    <div class="tiles" style="--tone:${tone(f)}">
       <div class="tile flip" style="--i:0"><span class="k">You said</span><span class="v">${q.pre}${short(r.guess)}${q.suf}</span></div>
       <div class="tile ans flip" style="--i:1"><span class="k">Answer</span><span class="v">${exact(q, r.answer.a)}</span></div>
-      <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">Points</span><span class="v" id="pts">${s}</span></div>
+      <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">${r.guess >= r.answer.a ? "Too high" : "Too low"}</span><span class="v" id="pts">${fx(f)}</span></div>
     </div>
-    <div class="verdict rise" style="--tone:${tone(s)};--i:5">${word(s)}</div>
-    <div class="rise" style="--i:6">${revealRuler(q.kind, r.answer.a, r.guess)}</div>
+    <div class="verdict rise" style="--tone:${tone(f)};--i:5">${word(f)}</div>
+    <div class="rise" style="--i:6">${revealRuler(r.answer.a, r.guess)}</div>
     <p class="story rise" style="--i:7">${esc(r.answer.reveal)}</p>
-    ${r.answer.why ? `<p class="why rise" style="--i:8">${esc(r.answer.why)}</p>` : ""}
-    <div class="cite rise" style="--i:9"><span>Source: <a href="${esc(r.answer.url)}" target="_blank" rel="noopener">${esc(r.answer.src)}</a></span><span class="per">${esc(r.answer.period)}</span></div>`;
+    ${r.answer.why ? `<p class="why rise" style="--i:8">${esc(r.answer.why)}</p>` : ""}`;
   $("dock").innerHTML = `<button class="go" id="next"><span>${last ? "See your score" : "Next question"}</span><span class="arr">→</span></button>`;
   $("next").onclick = () => go(play.results.length >= 3 ? "sum" : "q");
   $<HTMLButtonElement>("next").focus({ preventScroll: true });
-  countUp($("pts"), s, calm() ? 0 : 330, () => kick($("ptile"), "pop"));
+  countUp($("pts"), f, calm() ? 0 : 330, () => kick($("ptile"), "pop"));
 }
 
 /* ---------------- summary ---------------- */
 function shareText() {
-  const sc = play.results.map((r) => r.score), tot = sc.reduce((a, b) => a + b, 0);
-  const bar = (x: number) => { const f = Math.round(x / 20); return (x >= 80 ? "🟩" : x >= 40 ? "🟨" : "🟥").repeat(f) + "⬜".repeat(5 - f); };
-  return { sc, tot, text: `IslandIQ No. ${issue!.issue} · ${tot}/300\n${sc.map((x) => bar(x) + " " + x).join("\n")}\n${location.host || "islandiq.mt"}` };
+  const sc = play.results.map((r) => r.factor), avg = issueScore(sc);
+  const sq = (f: number) => (f <= 1.5 ? "🟩" : f <= 3 ? "🟨" : "🟥");
+  return { sc, avg, text: `IslandIQ No. ${issue!.issue} · ${fx(avg)}\n${sc.map(sq).join("")}  ${sc.map(fx).join(" · ")}\n${location.host || "islandiq.mt"}` };
 }
 
 function summary() {
-  const { sc, tot } = shareText(), Q = issue!.questions;
-  const quip = tot >= 240 ? "A walking NSO release." : tot >= 180 ? "Solid. Your nanna would be proud." : tot >= 110 ? "Respectable. Mostly." : "Tomorrow's a new day.";
+  const { sc, avg } = shareText(), Q = issue!.questions;
+  const quip = avg <= 1.3 ? "A walking NSO release." : avg <= 2 ? "Solid. Your nanna would be proud." : avg <= 4 ? "Respectable. Mostly." : "Tomorrow's a new day.";
   const latest = issue!.issue === issue!.latest;
   $("board").innerHTML = `
     <section class="hero">
-      <div class="total"><span class="big" id="total">${tot}</span><span class="of">/300</span></div>
+      <div class="total"><span class="big" id="total">${fx(avg)}</span><span class="of">average</span></div>
       <p class="quip rise" style="--i:6">${quip}</p>
     </section>
     <div class="lines">${Q.map((q, i) => `
       <div class="line ${cat(q.cat)} flip" style="--i:${i + 1}"><span class="sw"></span>
-        <div class="q"><span>${esc(q.cat)}</span><div class="meter"><i style="--w:${sc[i]}%;--i:${i + 1}"></i></div></div>
-        <span class="s" style="color:${tone(sc[i])}">${sc[i]}</span></div>`).join("")}</div>
+        <div class="q"><span>${emoji(q.cat)} ${esc(q.cat)}</span><div class="meter"><i style="--w:${closeness(sc[i])}%;--i:${i + 1}"></i></div></div>
+        <span class="s" style="color:${tone(sc[i])}">${fx(sc[i])}</span></div>`).join("")}</div>
     ${latest ? `<div class="next rise" style="--i:7"><span>Next issue in</span><b id="cd">--:--:--</b></div>` : `<div class="next"><span>Issue ${issue!.issue} of ${issue!.latest}</span><a class="link" href="#">Today's issue</a></div>`}`;
   $("dock").innerHTML = `<button class="go" id="share"><span>Share result</span><span class="arr">↗</span></button>`;
-  countUp($("total"), tot, calm() ? 0 : 450, () => kick($("total"), "pop"));
+  countUp($("total"), avg, calm() ? 0 : 450, () => kick($("total"), "pop"));
 
   const btn = $<HTMLButtonElement>("share");
   btn.onclick = async () => {
@@ -260,16 +269,18 @@ function summary() {
   }
 }
 
-/* Count a number up after `delay` ms, then run `after` (the pop). */
+/* Count a multiplier down from 10× to the result after `delay` ms, then run `after` (the pop). */
 function countUp(el: HTMLElement, to: number, delay: number, after: () => void) {
-  if (calm() || to === 0) { el.textContent = String(to); if (!calm()) setTimeout(after, delay); return; }
-  el.textContent = "0";
+  el.textContent = fx(to);
+  if (calm()) return;
+  const from = Math.max(10, to * 3);
+  el.textContent = fx(from);
   setTimeout(() => {
     const t0 = performance.now(), dur = 650;
     const step = (t: number) => {
-      const k = Math.min(1, (t - t0) / dur);
-      el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) requestAnimationFrame(step); else after();
+      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fx(Math.exp(Math.log(from) + (Math.log(to) - Math.log(from)) * e));
+      if (k < 1) requestAnimationFrame(step); else { el.textContent = fx(to); after(); }
     };
     requestAnimationFrame(step);
   }, delay);

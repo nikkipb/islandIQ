@@ -1,4 +1,3 @@
-import { ZERO_AT } from "../shared/scoring";
 import type { Kind } from "../shared/types";
 
 const W = 500, PAD = 18;
@@ -20,33 +19,26 @@ export function liveRuler(kind: Kind) {
     <g id="mk" class="mk" style="opacity:0;transform:translateX(${PAD}px)"><circle cx="0" cy="25" r="7.5" fill="var(--ink)" stroke="var(--paper)" stroke-width="2"/></g></svg>`;
 }
 
-/** Zoomed on the answer after guessing. The shaded band is where points are scored. */
-export function revealRuler(kind: Kind, a: number, g: number) {
-  let X: (v: number) => number, lo: number, hi: number, ticks: string, off: boolean;
-  if (kind === "pp") {
-    X = (v) => PAD + Math.min(100, Math.max(0, v)) / 100 * (W - 2 * PAD);
-    lo = Math.max(0, a - ZERO_AT.pp); hi = Math.min(100, a + ZERO_AT.pp);
-    ticks = [0, 25, 50, 75, 100].map((v) => `<text x="${X(v)}" y="78" text-anchor="middle">${v}%</text>`).join("");
-    off = false;
-  } else {
-    const k = ZERO_AT[kind], span = Math.log(k) * 1.6;
-    const L = Math.log(a) - span, H = Math.log(a) + span;
-    X = (v) => PAD + (Math.min(H, Math.max(L, Math.log(Math.max(v, 1e-9)))) - L) / (H - L) * (W - 2 * PAD);
-    lo = a / k; hi = a * k;
-    ticks = ([[a / k, "÷" + k], [a * k, "×" + k]] as const).map(([v, l]) => `<text x="${X(v)}" y="78" text-anchor="middle">${l} = 0 pts</text>`).join("");
-    off = Math.abs(Math.log(Math.max(g, 1e-9)) - Math.log(a)) > span;
-  }
+/** Zoomed on the answer after guessing, log scale. Marks ×2 and ×10 either side;
+ *  the shaded band is "within 2×". Widens to fit wild guesses. */
+export function revealRuler(a: number, g: number) {
+  const f = Math.max(g / a, a / g);
+  const span = Math.log(Math.min(1000, Math.max(12, f * 1.6)));
+  const L = Math.log(a) - span, H = Math.log(a) + span;
+  const X = (v: number) => PAD + (Math.min(H, Math.max(L, Math.log(v))) - L) / (H - L) * (W - 2 * PAD);
+  const marks = ([[1 / 10, "÷10"], [1 / 2, "÷2"], [2, "×2"], [10, "×10"], [1 / 100, "÷100"], [100, "×100"]] as const)
+    .filter(([m]) => Math.abs(Math.log(m)) < span * 0.95);
   const ax = X(a), gx = X(g);
-  const gl = Math.min(W - 40, Math.max(40, gx)), al = Math.min(W - 50, Math.max(50, ax));
-  const close = Math.abs(gx - ax) < 70;
-  return `<svg class="ruler" viewBox="0 0 ${W} 86" role="img" aria-label="Your guess against the answer. The shaded band is where points are scored.">
-    <polygon points="${X(lo)},50 ${ax},34 ${X(hi)},50" fill="var(--good)" opacity=".18"/>
+  const close = Math.abs(gx - ax) < 60;
+  const gl = Math.min(W - 30, Math.max(30, gx)), al = Math.min(W - 40, Math.max(40, ax));
+  const ticks = marks.map(([m, l]) => `<line x1="${X(a * m)}" x2="${X(a * m)}" y1="44" y2="56" stroke="var(--ink-2)"/><text x="${X(a * m)}" y="74" text-anchor="middle">${l}</text>`).join("");
+  return `<svg class="ruler" viewBox="0 0 ${W} 80" role="img" aria-label="Your guess against the answer on a log scale">
     <line x1="${PAD}" x2="${W - PAD}" y1="50" y2="50" stroke="var(--rule)" stroke-width="6" stroke-linecap="round"/>
-    <line x1="${X(lo)}" x2="${X(hi)}" y1="50" y2="50" stroke="var(--good)" stroke-opacity=".35" stroke-width="6"/>
-    <line x1="${ax}" x2="${ax}" y1="22" y2="58" stroke="var(--good)" stroke-width="3"/>
-    <text class="lbl" x="${al}" y="${close ? 14 : 16}" text-anchor="middle" style="fill:var(--good)">Answer</text>
+    <line x1="${X(a / 2)}" x2="${X(a * 2)}" y1="50" y2="50" stroke="var(--good)" stroke-opacity=".45" stroke-width="6"/>
+    ${ticks}
+    <line x1="${ax}" x2="${ax}" y1="24" y2="58" stroke="var(--good)" stroke-width="3"/>
+    <text class="lbl" x="${al}" y="${close ? 14 : 18}" text-anchor="middle" style="fill:var(--good)">Answer</text>
     <circle cx="${gx}" cy="50" r="8" fill="var(--ink)" stroke="var(--paper)" stroke-width="2.5"/>
-    <text class="lbl" x="${gl}" y="${close ? 78 : 16}" text-anchor="middle" style="fill:var(--ink)">You${off ? " (off the scale)" : ""}</text>
-    ${close ? "" : ticks}
+    ${close ? "" : `<text class="lbl" x="${gl}" y="18" text-anchor="middle" style="fill:var(--ink)">You</text>`}
   </svg>`;
 }

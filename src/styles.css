@@ -188,3 +188,15 @@ dialog.sheet::backdrop{background:transparent}
   .go{padding:12px 16px 10px;font-size:21px}
   .why{display:none}
 }
+
+/* ---------- landing: tagline first, then issue + date, then topic emoji ---------- */
+.tagline{margin:0;font-family:var(--f-sign);font-weight:900;font-size:clamp(54px, 16vw, 80px);line-height:.88;letter-spacing:-.005em;text-transform:uppercase;text-wrap:balance}
+.dateline{margin:4px 0 0;display:flex;gap:10px;align-items:baseline;font-family:var(--f-num);font-size:14px;color:var(--ink-2)}
+.dateline b{font-family:var(--f-sign);font-weight:800;font-size:22px;letter-spacing:.03em;color:var(--ink)}
+.peek{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;perspective:800px}
+.chip{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;position:relative}
+.chip .e{font-size:clamp(38px, 12vw, 52px);line-height:1}
+.chip.done::after{content:"✓";position:absolute;top:6px;right:9px;font-weight:700;font-size:16px}
+.tile.pts .v{font-size:34px}
+.total .of{font-size:24px}
+@media (max-height:700px){ .tagline{font-size:52px} }

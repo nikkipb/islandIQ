@@ -1,26 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { score, validGuess } from "../shared/scoring";
+import { factor, issueScore, roundFactor, validGuess } from "../shared/scoring";
 import { parseGuess } from "../shared/parse";
 import { issueFor, dateOfIssue } from "../shared/time";
 import schedule from "../data/schedule.json";
 
-describe("score", () => {
-  it("gives 100 for exact answers", () => {
-    expect(score("ratio", 4022310, 4022310)).toBe(100);
-    expect(score("count", 3, 3)).toBe(100);
-    expect(score("pp", 79.2, 79.2)).toBe(100);
+describe("multiplier scoring", () => {
+  it("is 1× when exact", () => expect(factor(4022310, 4022310)).toBe(1));
+  it("is symmetric: half and double are both 2×", () => {
+    expect(factor(1000, 2000)).toBe(2);
+    expect(factor(1000, 500)).toBe(2);
   });
-  it("is symmetric in ratio terms", () => {
-    expect(score("ratio", 1000, 2000)).toBe(score("ratio", 1000, 500));
-    expect(score("ratio", 1000, 2000)).toBe(70);
-  });
-  it("hits zero at the cut-offs", () => {
-    expect(score("ratio", 100, 1000)).toBe(0);
-    expect(score("count", 3, 9)).toBe(0);
-    expect(score("pp", 50, 75)).toBe(0);
+  it("works for percentages too", () => expect(roundFactor(factor(79.2, 70))).toBe(1.1));
+  it("caps a wild miss at 100×", () => expect(factor(2305968, 3)).toBe(100));
+  it("averages an issue", () => expect(issueScore([1, 2, 3])).toBe(2));
+  it("rounds to 1dp under 10×, whole above", () => {
+    expect(roundFactor(1.234)).toBe(1.2);
+    expect(roundFactor(23.6)).toBe(24);
   });
   it("rejects nonsense", () => {
     expect(validGuess("pp", 120)).toBe(false);
+    expect(validGuess("pp", 0)).toBe(false);
     expect(validGuess("ratio", 0)).toBe(false);
     expect(validGuess("ratio", Number.NaN)).toBe(false);
   });
@@ -42,7 +41,7 @@ describe("time", () => {
 
 describe("schedule", () => {
   it("has three questions from three categories every day", () => {
-    for (const day of schedule as { cat: string; id: string }[][]) {
+    for (const day of schedule as { cat: string }[][]) {
       expect(day).toHaveLength(3);
       expect(new Set(day.map((q) => q.cat)).size).toBe(3);
     }

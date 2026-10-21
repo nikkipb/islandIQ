@@ -30,7 +30,7 @@ export interface IssuePayload {
 }
 
 export interface GuessResult {
-  score: number;
+  factor: number;      // how many times off, e.g. 1.4 (lower is better)
   guess: number;
   answer: Pick<Question, "a" | "reveal" | "why" | "period" | "src" | "url">;
 }

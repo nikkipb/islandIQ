@@ -1,4 +1,4 @@
-import { score, validGuess } from "../shared/scoring";
+import { factor, roundFactor, validGuess } from "../shared/scoring";
 import { getIssue, json, latestIssue, publicIssue, type Env } from "../shared/server";
 import type { GuessResult } from "../shared/types";
 
@@ -42,21 +42,21 @@ async function postGuess(request: Request, env: Env) {
   if (!validGuess(q.kind, b.guess)) return json({ error: "That guess isn't a valid number for this question." }, 422);
 
   const prior = await env.DB.prepare(
-    "SELECT guess, score FROM guesses WHERE issue = ?1 AND q_index = ?2 AND player = ?3",
-  ).bind(b.issue, idx, b.player).first<{ guess: number; score: number }>();
+    "SELECT guess, factor FROM guesses WHERE issue = ?1 AND q_index = ?2 AND player = ?3",
+  ).bind(b.issue, idx, b.player).first<{ guess: number; factor: number }>();
 
-  let g = b.guess, s: number;
+  let g = b.guess, f: number;
   if (prior) {
-    g = prior.guess; s = prior.score;
+    g = prior.guess; f = prior.factor;
   } else {
-    s = score(q.kind, q.a, g);
+    f = roundFactor(factor(q.a, g));
     await env.DB.prepare(
-      "INSERT OR IGNORE INTO guesses (issue, q_index, question, player, guess, score) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-    ).bind(b.issue, idx, q.id, b.player, g, s).run();
+      "INSERT OR IGNORE INTO guesses (issue, q_index, question, player, guess, factor) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+    ).bind(b.issue, idx, q.id, b.player, g, f).run();
   }
 
   const res: GuessResult = {
-    score: s,
+    factor: f,
     guess: g,
     answer: { a: q.a, reveal: q.reveal, why: q.why, period: q.period, src: q.src, url: q.url },
   };
