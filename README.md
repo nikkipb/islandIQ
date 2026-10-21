@@ -7,8 +7,9 @@ The daily Maltese numbers game. Three questions a day, one guess each, up to 100
 ```
 content/questions.xlsx  ──(npm run schedule)──▶  data/schedule.json   (answers live here, server-only)
                                                         │
-functions/api/issue/[n].ts  GET  → today's 3 questions, no answers
-functions/api/guess.ts      POST → scores on the server, stores in D1, returns the reveal
+worker/index.ts   GET  /api/issue/:n  → that day's 3 questions, no answers
+                  POST /api/guess     → scores on the server, stores in D1, returns the reveal
+                  everything else     → static files from dist/
                                                         │
 src/  (Vite + TypeScript, no framework)  ◀──────────────┘
 shared/  scoring, parsing and time code used by both sides
@@ -23,7 +24,7 @@ shared/  scoring, parsing and time code used by both sides
 ```bash
 npm install
 npm run db:migrate:local      # creates the local D1 database
-npm run build && npm run api  # API + built site on http://localhost:8788
+npm run build && npm run api  # Worker + built site on http://localhost:8788
 npm run dev                   # in a 2nd terminal: hot-reload front end on :5173, proxies /api to :8788
 npm test
 ```
@@ -40,16 +41,13 @@ Issues that have already gone out are frozen: the script copies them unchanged a
 
 Rows with an *Editorial status* starting "Rejected" are skipped. Scoring type comes from the *Scoring guidance* column: "Percentage-point…" → points off, "Relative…" → ratio (0 at 10× off), anything else → count (0 at 3× off). Cut-offs live in `shared/scoring.ts`.
 
-## Deploy (Cloudflare Pages + D1, free tier)
+## Deploy (Cloudflare Workers + D1, free tier)
 
-```bash
-npx wrangler login
-npx wrangler d1 create islandiq          # paste the database_id into wrangler.toml
-npm run db:migrate:remote
-npm run deploy
-```
+Production deploys automatically on every push to `main` (Cloudflare Workers Builds:
+build command `npm run build`, deploy command `npx wrangler deploy`).
 
-Or connect the repo in the Cloudflare dashboard (build command `npm run build`, output `dist`) and add the D1 binding `DB` under Settings → Functions.
+Manual deploy from a laptop: `npx wrangler login` then `npm run deploy`.
+Schema changes: add a new file in `migrations/`, then `npm run db:migrate:remote`.
 
 ## Open decisions
 

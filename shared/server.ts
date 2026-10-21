@@ -5,6 +5,7 @@ import { dateOfIssue, issueFor, maltaParts } from "./time";
 export interface Env {
   DB: D1Database;
   PREVIEW?: string;
+  ASSETS: Fetcher;
 }
 
 const DAYS = schedule as unknown as Question[][];

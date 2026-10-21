@@ -1,9 +1,15 @@
 name = "islandiq"
-pages_build_output_dir = "dist"
+main = "worker/index.ts"
 compatibility_date = "2025-09-01"
 
+# Built front end (npm run build). Files are served directly; everything else
+# (the /api routes) goes to worker/index.ts.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
 [vars]
-# "1" unlocks every issue (archive + future). Set to "0" in production.
+# "1" unlocks every issue (archive + future). Set to "0" for launch.
 PREVIEW = "1"
 
 [[d1_databases]]

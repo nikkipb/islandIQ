@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "skipLibCheck": true
   },
-  "include": ["src", "shared", "functions", "tests"]
+  "include": ["src", "shared", "worker", "tests"]
 }
