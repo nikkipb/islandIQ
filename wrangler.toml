@@ -1,0 +1,14 @@
+name = "islandiq"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-09-01"
+
+[vars]
+# "1" unlocks every issue (archive + future). Set to "0" in production.
+PREVIEW = "1"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "islandiq"
+# Replace with the id printed by `npx wrangler d1 create islandiq`
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

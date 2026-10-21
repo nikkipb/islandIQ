@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-MT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>IslandIQ · The daily Maltese numbers game</title>
+  <meta name="description" content="Three Maltese numbers a day. One guess each. Every answer comes with its official source.">
+  <meta name="theme-color" content="#E4E6E2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F1214" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="IslandIQ">
+  <meta property="og:description" content="Three Maltese numbers a day. How close can you get?">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Schibsted+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+</head>
+<body>
+  <div class="app">
+    <header class="mast">
+      <a class="mark" href="/" aria-label="IslandIQ home" style="text-decoration:none">Island<span class="plate">IQ</span></a>
+      <div class="issue" id="issue"></div>
+    </header>
+    <main id="stage" aria-live="polite"><div class="loading">Loading today's issue…</div></main>
+    <section class="archive" aria-label="Archive">
+      <h3>Every issue <span id="archive-note"></span></h3>
+      <div class="days" id="days"></div>
+    </section>
+    <footer class="foot">
+      <span>Every answer links to its official source and reference period.</span>
+      <span>No accounts. Your scores stay on this device.</span>
+    </footer>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
