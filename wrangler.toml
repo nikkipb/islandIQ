@@ -9,6 +9,5 @@ PREVIEW = "1"
 [[d1_databases]]
 binding = "DB"
 database_name = "islandiq"
-# Replace with the id printed by `npx wrangler d1 create islandiq`
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "fa9d259b-9a7b-43db-92f0-838dfcfea48a"
 migrations_dir = "migrations"
