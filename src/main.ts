@@ -1,7 +1,7 @@
 import "./styles.css";
 import { parseGuess, ParseError } from "../shared/parse";
 import { secondsToNextIssue } from "../shared/time";
-import { CAP, issueScore, roundFactor } from "../shared/scoring";
+import { issueScore, roundFactor } from "../shared/scoring";
 import type { IssuePayload } from "../shared/types";
 import { liveRuler, liveX, revealRuler } from "./ruler";
 import { esc, exact, short, words } from "./format";
@@ -21,7 +21,9 @@ const EMOJI: Record<string, string> = {
 const emoji = (c: string) => EMOJI[CAT[c] ?? "geo"];
 const word = (f: number) => f <= 1.1 ? "Bang on" : f <= 1.5 ? "Very close" : f <= 2 ? "Close" : f <= 5 ? "In the area" : f <= 20 ? "Way off" : "Not even close";
 const tone = (f: number) => f <= 1.5 ? "var(--good)" : f <= 3 ? "var(--mid)" : "var(--bad)";
-const fx = (f: number) => { if (f >= CAP) return CAP + "×+"; const r = roundFactor(f); return (r < 10 ? r.toFixed(1) : String(r)) + "×"; };
+const fx = (f: number) => { const r = roundFactor(f); return (r < 10 ? r.toFixed(2) : r < 100 ? r.toFixed(1) : r.toLocaleString("en-GB")) + "×"; };
+/** Shrink big numbers so "7,686,656×" still fits its box. */
+const fit = (f: number, sizes: [number, number, number, number]) => { const n = fx(f).length; return `font-size:${n <= 5 ? sizes[0] : n <= 7 ? sizes[1] : n <= 9 ? sizes[2] : sizes[3]}px`; };
 /** Bar length for a multiplier: full at 1×, empty at 10× and beyond (log scale). */
 const closeness = (f: number) => Math.max(0, 1 - Math.log10(f)) * 100;
 const fmtDate = (ymd: string) => new Date(ymd + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
@@ -203,7 +205,7 @@ function reveal(i: number) {
     <div class="tiles" style="--tone:${tone(f)}">
       <div class="tile flip" style="--i:0"><span class="k">You said</span><span class="v">${q.pre}${short(r.guess)}${q.suf}</span></div>
       <div class="tile ans flip" style="--i:1"><span class="k">Answer</span><span class="v">${exact(q, r.answer.a)}</span></div>
-      <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">${r.guess >= r.answer.a ? "Too high" : "Too low"}</span><span class="v" id="pts">${fx(f)}</span></div>
+      <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">${r.guess >= r.answer.a ? "Too high" : "Too low"}</span><span class="v" id="pts" style="${fit(f, [34, 26, 20, 15])}">${fx(f)}</span></div>
     </div>
     <div class="verdict rise" style="--tone:${tone(f)};--i:5">${word(f)}</div>
     <div class="rise" style="--i:6">${revealRuler(r.answer.a, r.guess)}</div>
@@ -228,13 +230,13 @@ function summary() {
   const latest = issue!.issue === issue!.latest;
   $("board").innerHTML = `
     <section class="hero">
-      <div class="total"><span class="big" id="total">${fx(avg)}</span><span class="of">average</span></div>
+      <div class="total"><span class="big" id="total" style="${fit(avg, [112, 84, 60, 44])}">${fx(avg)}</span><span class="of">average</span></div>
       <p class="quip rise" style="--i:6">${quip}</p>
     </section>
     <div class="lines">${Q.map((q, i) => `
       <div class="line ${cat(q.cat)} flip" style="--i:${i + 1}"><span class="sw"></span>
         <div class="q"><span>${emoji(q.cat)} ${esc(q.cat)}</span><div class="meter"><i style="--w:${closeness(sc[i])}%;--i:${i + 1}"></i></div></div>
-        <span class="s" style="color:${tone(sc[i])}">${fx(sc[i])}</span></div>`).join("")}</div>
+        <span class="s" style="color:${tone(sc[i])};${fit(sc[i], [28, 24, 18, 14])}">${fx(sc[i])}</span></div>`).join("")}</div>
     ${latest ? `<div class="next rise" style="--i:7"><span>Next issue in</span><b id="cd">--:--:--</b></div>` : `<div class="next"><span>Issue ${issue!.issue} of ${issue!.latest}</span><a class="link" href="#">Today's issue</a></div>`}`;
   $("dock").innerHTML = `<button class="go" id="share"><span>Share result</span><span class="arr">↗</span></button>`;
   countUp($("total"), avg, calm() ? 0 : 450, () => kick($("total"), "pop"));

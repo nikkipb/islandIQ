@@ -10,12 +10,13 @@ describe("multiplier scoring", () => {
     expect(factor(1000, 2000)).toBe(2);
     expect(factor(1000, 500)).toBe(2);
   });
-  it("works for percentages too", () => expect(roundFactor(factor(79.2, 70))).toBe(1.1));
-  it("caps a wild miss at 100×", () => expect(factor(2305968, 3)).toBe(100));
+  it("works for percentages too", () => expect(roundFactor(factor(79.2, 70))).toBe(1.13));
+  it("does not cap wild misses", () => expect(Math.round(factor(2305968, 3))).toBe(768656));
   it("averages an issue", () => expect(issueScore([1, 2, 3])).toBe(2));
-  it("rounds to 1dp under 10×, whole above", () => {
-    expect(roundFactor(1.234)).toBe(1.2);
-    expect(roundFactor(23.6)).toBe(24);
+  it("rounds to 2dp under 10×, 1dp under 100×, whole above", () => {
+    expect(roundFactor(1.234)).toBe(1.23);
+    expect(roundFactor(23.64)).toBe(23.6);
+    expect(roundFactor(768655.7)).toBe(768656);
   });
   it("rejects nonsense", () => {
     expect(validGuess("pp", 120)).toBe(false);
