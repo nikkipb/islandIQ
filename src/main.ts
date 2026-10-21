@@ -3,7 +3,7 @@ import { parseGuess, ParseError } from "../shared/parse";
 import { secondsToNextIssue } from "../shared/time";
 import { issueScore, roundFactor } from "../shared/scoring";
 import type { IssuePayload } from "../shared/types";
-import { liveRuler, liveX, revealRuler } from "./ruler";
+import { revealRuler } from "./ruler";
 import { esc, exact, short, words } from "./format";
 import { fetchIssue, submitGuess } from "./api";
 import { load, save, type Play } from "./store";
@@ -19,7 +19,9 @@ const EMOJI: Record<string, string> = {
   food: "🥖", property: "🏠", economy: "📈", tourism: "✈️",
 };
 const emoji = (c: string) => EMOJI[CAT[c] ?? "geo"];
-const word = (f: number) => f <= 1.1 ? "Bang on" : f <= 1.5 ? "Very close" : f <= 2 ? "Close" : f <= 5 ? "In the area" : f <= 20 ? "Way off" : "Not even close";
+/** Short unit shown inside the answer box, e.g. "people", "%", "tonnes". The € prefix already covers "euros". */
+const unitTag = (q: { unit: string; pre: string; suf: string }) =>
+  (q.suf ? q.suf : q.pre === "€" ? q.unit.replace(/^euros\s*/, "") : q.unit).replace(/\s*\(approx\.\)/, "");
 const tone = (f: number) => f <= 1.5 ? "var(--good)" : f <= 3 ? "var(--mid)" : "var(--bad)";
 const fx = (f: number) => { const r = roundFactor(f); return (r < 10 ? r.toFixed(2) : r < 100 ? r.toFixed(1) : r.toLocaleString("en-GB")) + "×"; };
 /** Shrink big numbers so "7,686,656×" still fits its box. */
@@ -135,20 +137,21 @@ function question(i: number) {
       <h2>${esc(q.q)}</h2>
       <span class="unit">Answer in ${esc(q.unit)}</span>
     </section>
-    <div class="rise" style="--i:3">${liveRuler(q.kind)}</div>`;
-  $("dock").innerHTML = `
-    <div class="readout" id="readout"><span class="words" id="words">No looking it up. One guess.</span></div>
-    <form class="entryrow" id="form" autocomplete="off" novalidate>
-      <label class="entry" for="guess">
-        ${q.pre ? `<span class="aff">${q.pre}</span>` : ""}
-        <input id="guess" inputmode="${q.kind === "pp" ? "decimal" : "text"}" enterkeyhint="go" placeholder="${q.kind === "pp" ? "e.g. 35" : "e.g. 250k"}" aria-label="Your guess" aria-describedby="readout">
-        ${q.suf ? `<span class="aff">${q.suf}</span>` : ""}
-      </label>
-      <button class="go" id="lock" disabled><span>Lock in</span></button>
-    </form>`;
+    <div class="answer rise" style="--i:2">
+      <form class="entryrow" id="form" autocomplete="off" novalidate>
+        <label class="entry" for="guess">
+          ${q.pre ? `<span class="aff">${q.pre}</span>` : ""}
+          <input id="guess" inputmode="${q.kind === "pp" ? "decimal" : "text"}" enterkeyhint="go" placeholder="${q.kind === "pp" ? "e.g. 35" : "e.g. 250k"}" aria-label="Your guess in ${esc(q.unit)}" aria-describedby="readout">
+          <span class="unit-tag" aria-hidden="true">${esc(unitTag(q))}</span>
+        </label>
+        <button class="go" id="lock" disabled><span>Lock in</span></button>
+      </form>
+      <div class="readout" id="readout"><span class="words" id="words">No looking it up. One guess.</span></div>
+    </div>`;
+  $("dock").innerHTML = "";
 
   const inp = $<HTMLInputElement>("guess"), btn = $<HTMLButtonElement>("lock");
-  const rd = $("readout"), w = $("words"), row = $("form"), mk = document.getElementById("mk");
+  const rd = $("readout"), w = $("words"), row = $("form");
   let val: number | null = null, why = "";
   inp.focus({ preventScroll: true });
 
@@ -170,10 +173,6 @@ function question(i: number) {
     rd.className = why ? "readout err" : "readout";
     w.textContent = why || (val == null ? "No looking it up. One guess." : "= " + q.pre + words(val) + q.suf);
     btn.disabled = val == null && !why;   // stay pressable on errors so Enter can shake
-    if (mk) {
-      mk.style.opacity = val == null ? "0" : "1";
-      if (val != null) mk.style.transform = `translateX(${liveX(q.kind, val)}px)`;
-    }
   };
 
   ($("form") as HTMLFormElement).onsubmit = async (e) => {
@@ -207,7 +206,6 @@ function reveal(i: number) {
       <div class="tile ans flip" style="--i:1"><span class="k">Answer</span><span class="v">${exact(q, r.answer.a)}</span></div>
       <div class="tile pts flip" style="--i:2" id="ptile"><span class="k">${r.guess >= r.answer.a ? "Too high" : "Too low"}</span><span class="v" id="pts" style="${fit(f, [34, 26, 20, 15])}">${fx(f)}</span></div>
     </div>
-    <div class="verdict rise" style="--tone:${tone(f)};--i:5">${word(f)}</div>
     <div class="rise" style="--i:6">${revealRuler(r.answer.a, r.guess)}</div>
     <p class="story rise" style="--i:7">${esc(r.answer.reveal)}</p>
     ${r.answer.why ? `<p class="why rise" style="--i:8">${esc(r.answer.why)}</p>` : ""}`;
@@ -226,12 +224,10 @@ function shareText() {
 
 function summary() {
   const { sc, avg } = shareText(), Q = issue!.questions;
-  const quip = avg <= 1.3 ? "A walking NSO release." : avg <= 2 ? "Solid. Your nanna would be proud." : avg <= 4 ? "Respectable. Mostly." : "Tomorrow's a new day.";
   const latest = issue!.issue === issue!.latest;
   $("board").innerHTML = `
     <section class="hero">
       <div class="total"><span class="big" id="total" style="${fit(avg, [112, 84, 60, 44])}">${fx(avg)}</span><span class="of">average</span></div>
-      <p class="quip rise" style="--i:6">${quip}</p>
     </section>
     <div class="lines">${Q.map((q, i) => `
       <div class="line ${cat(q.cat)} flip" style="--i:${i + 1}"><span class="sw"></span>

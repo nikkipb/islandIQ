@@ -64,7 +64,7 @@ a{color:inherit}
 .go .arr{font-family:var(--f-text);font-weight:600;font-size:20px}
 .go.ok{background:var(--good);color:#fff}
 .link{appearance:none;background:none;border:0;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;color:var(--ink-2);font-size:14px}
-:is(.go,.icon,.link,.day,.entry input):focus-visible{outline:3px solid var(--plate-ink);outline-offset:2px;box-shadow:0 0 0 6px var(--plate)}
+:is(.go,.icon,.link,.day):focus-visible{outline:3px solid var(--plate-ink);outline-offset:2px;box-shadow:0 0 0 6px var(--plate)}
 
 /* ---------- intro ---------- */
 .hero{display:flex;flex-direction:column;gap:6px}
@@ -200,3 +200,10 @@ dialog.sheet::backdrop{background:transparent}
 .tile.pts .v{font-size:34px;white-space:nowrap}
 .total .of{font-size:24px}
 @media (max-height:700px){ .tagline{font-size:52px} }
+
+/* answer box sits right under the question; the unit stays visible inside it while typing */
+.answer{display:flex;flex-direction:column;gap:8px}
+.entry{position:relative}
+.entry .unit-tag{display:flex;align-items:center;padding:0 12px 0 4px;font-family:var(--f-text);font-size:14px;font-weight:500;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%;pointer-events:none}
+.entry .unit-tag:empty{display:none}
+.entry:focus-within{box-shadow:0 0 0 3px var(--plate)}
