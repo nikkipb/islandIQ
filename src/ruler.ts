@@ -4,19 +4,20 @@ import type { Kind } from "../shared/types";
 const W = 500, PAD = 18;
 const base = `<line x1="${PAD}" x2="${W - PAD}" y1="25" y2="25" stroke="var(--rule)" stroke-width="6" stroke-linecap="round"/>`;
 
-/** Generic scale while typing. Never centred on the answer, so it can't leak it. */
-export function liveRuler(kind: Kind, g: number | null) {
-  if (kind === "pp") {
-    const X = (v: number) => PAD + Math.min(100, Math.max(0, v)) / 100 * (W - 2 * PAD);
-    const ticks = [0, 25, 50, 75, 100].map((v) => `<line x1="${X(v)}" x2="${X(v)}" y1="20" y2="30" stroke="var(--ink-2)"/><text x="${X(v)}" y="46" text-anchor="middle">${v}%</text>`).join("");
-    const mk = g == null ? "" : `<rect x="${X(0)}" y="22" width="${X(g) - X(0)}" height="6" fill="var(--ink)"/><circle cx="${X(g)}" cy="25" r="7" fill="var(--ink)"/>`;
-    return `<svg class="ruler" viewBox="0 0 ${W} 52" aria-hidden="true">${base}${ticks}${mk}</svg>`;
-  }
-  const labels = ["1", "10", "100", "1k", "10k", "100k", "1m", "10m", "100m", "1bn", "10bn"];
-  const X = (v: number) => PAD + Math.min(10, Math.max(0, Math.log10(Math.max(v, 1)))) / 10 * (W - 2 * PAD);
-  const ticks = labels.map((l, i) => `<line x1="${X(10 ** i)}" x2="${X(10 ** i)}" y1="${i % 3 === 0 ? 16 : 20}" y2="30" stroke="var(--ink-2)"/><text x="${X(10 ** i)}" y="46" text-anchor="middle">${l}</text>`).join("");
-  const mk = g == null ? "" : `<circle cx="${X(g)}" cy="25" r="7" fill="var(--ink)"/>`;
-  return `<svg class="ruler" viewBox="0 0 ${W} 52" aria-hidden="true">${base}${ticks}${mk}</svg>`;
+/** x-position (viewBox units) of a value on the live ruler. */
+export function liveX(kind: Kind, v: number) {
+  if (kind === "pp") return PAD + Math.min(100, Math.max(0, v)) / 100 * (W - 2 * PAD);
+  return PAD + Math.min(10, Math.max(0, Math.log10(Math.max(v, 1)))) / 10 * (W - 2 * PAD);
+}
+
+/** Generic scale while typing. Never centred on the answer, so it can't leak it.
+ *  The marker (#mk) is moved with a CSS transform so it glides as you type. */
+export function liveRuler(kind: Kind) {
+  const ticks = kind === "pp"
+    ? [0, 25, 50, 75, 100].map((v) => `<line x1="${liveX(kind, v)}" x2="${liveX(kind, v)}" y1="20" y2="30" stroke="var(--ink-2)"/><text x="${liveX(kind, v)}" y="46" text-anchor="middle">${v}%</text>`).join("")
+    : ["1", "10", "100", "1k", "10k", "100k", "1m", "10m", "100m", "1bn", "10bn"].map((l, i) => `<line x1="${liveX(kind, 10 ** i)}" x2="${liveX(kind, 10 ** i)}" y1="${i % 3 === 0 ? 16 : 20}" y2="30" stroke="var(--ink-2)"/><text x="${liveX(kind, 10 ** i)}" y="46" text-anchor="middle">${l}</text>`).join("");
+  return `<svg class="ruler" viewBox="0 0 ${W} 52" aria-hidden="true">${base}${ticks}
+    <g id="mk" class="mk" style="opacity:0;transform:translateX(${PAD}px)"><circle cx="0" cy="25" r="7.5" fill="var(--ink)" stroke="var(--paper)" stroke-width="2"/></g></svg>`;
 }
 
 /** Zoomed on the answer after guessing. The shaded band is where points are scored. */
